@@ -1,19 +1,59 @@
 "use client";
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-
-const events = [
-  {
-    id: 1,
-    name: "BugHunt",
-    description: "Find and fix bugs in code challenges. Test your debugging skills!",
-    date: "March 15, 2026",
-    category: "Competition",
-    icon: "🐛"
-  }
-];
+import { useUser } from '@clerk/nextjs';
 
 const EventsPage = () => {
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [registeredEventIds, setRegisteredEventIds] = useState(new Set());
+  const { isLoaded, isSignedIn, user } = useUser();
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const response = await fetch('/api/events');
+        const data = await response.json();
+        setEvents(data.events || []);
+      } catch (error) {
+        console.error('Error fetching events:', error);
+      }
+      setLoading(false);
+    };
+    fetchEvents();
+  }, []);
+
+  // Fetch user registrations
+  useEffect(() => {
+    const fetchRegistrations = async () => {
+      if (!isLoaded || !isSignedIn || !user) return;
+
+      try {
+        const email = user.primaryEmailAddress?.emailAddress;
+        if (!email) return;
+
+        const response = await fetch(`/api/registrations?email=${encodeURIComponent(email)}`);
+        if (response.ok) {
+          const data = await response.json();
+          const registeredIds = new Set(data.registrations.map(reg => reg.eventId));
+          setRegisteredEventIds(registeredIds);
+        }
+      } catch (error) {
+        console.error('Error fetching registrations:', error);
+      }
+    };
+
+    fetchRegistrations();
+  }, [isLoaded, isSignedIn, user]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 pt-24 pb-16 flex items-center justify-center">
+        <div className="text-white text-xl">Loading events...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 pt-24 pb-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -32,11 +72,15 @@ const EventsPage = () => {
           {events.map((event) => (
             <div 
               key={event.id}
-              className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-purple-500/20 hover:border-purple-500/50 transition-all duration-300 hover:transform hover:scale-105 hover:shadow-xl hover:shadow-purple-500/10 group"
+              className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-purple-500/20 hover:border-purple-500/50 transition-all duration-300 hover:transform hover:scale-105 hover:shadow-xl hover:shadow-purple-500/10 group flex flex-col h-full"
             >
-              {/* Event Icon */}
-              <div className="w-16 h-16 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-                <span className="text-3xl">{event.icon}</span>
+              {/* Event Image/Icon */}
+              <div className="w-16 h-16 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 overflow-hidden">
+                {event.imagePath ? (
+                  <img src={event.imagePath} alt={event.name} className="w-full h-full object-cover rounded-xl" />
+                ) : (
+                  <span className="text-3xl">{event.image}</span>
+                )}
               </div>
 
               {/* Category Badge */}
@@ -50,7 +94,7 @@ const EventsPage = () => {
               </h3>
 
               {/* Event Description */}
-              <p className="text-gray-400 mb-4 text-sm leading-relaxed">
+              <p className="text-gray-400 mb-4 text-sm leading-relaxed line-clamp-2">
                 {event.description}
               </p>
 
@@ -63,12 +107,45 @@ const EventsPage = () => {
               </div>
 
               {/* Register Button */}
-              <Link 
-                href={`/events/${event.id}`}
-                className="block w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-purple-500/25 text-center"
-              >
-                Register Now
-              </Link>
+            {/* Register Button or Status Badge */}
+            {(() => {
+              const isExpired = event.deadline && new Date(event.deadline) < new Date();
+              const isClosed = !event.registrationOpen || isExpired;
+
+              if (registeredEventIds.has(event.id)) {
+                return (
+                  <Link 
+                    href={`/events/${event.id}`}
+                    className="block w-full bg-green-600/20 border border-green-500/50 text-green-400 py-3 rounded-xl font-medium hover:bg-green-600/30 transition-all duration-300 flex items-center justify-center gap-2 mt-auto"
+                  >
+                    <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Registered - View Details
+                  </Link>
+                );
+              }
+
+              if (isClosed) {
+                return (
+                  <button
+                    disabled
+                    className="block w-full bg-slate-700/50 border border-slate-600 text-gray-400 py-3 rounded-xl font-medium cursor-not-allowed mt-auto"
+                  >
+                    {isExpired ? 'Registration Ended' : 'Registration Closed'}
+                  </button>
+                );
+              }
+
+              return (
+                <Link 
+                  href={`/events/${event.id}`}
+                  className="block w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-purple-500/25 text-center mt-auto"
+                >
+                  Register Now
+                </Link>
+              );
+            })()}
             </div>
           ))}
         </div>

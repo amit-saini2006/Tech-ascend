@@ -1,33 +1,62 @@
 "use client";
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-
-const events = {
-  1: {
-    id: 1,
-    name: "BugHunt",
-    tagline: "Hunt the bugs, claim the glory!",
-    description: "BugHunt is an exciting debugging competition where participants race against time to find and fix bugs in code. Test your problem-solving skills, attention to detail, and coding expertise as you navigate through challenging code snippets across multiple programming languages.",
-    image: "🐛",
-    date: "March 15, 2026",
-    time: "10:00 AM - 6:00 PM",
-    duration: "8 Hours",
-    mode: "Hybrid",
-    location: "CS Lab 101 & Online",
-    category: "Competition",
-    teamSize: "Individual or Team of 2",
-    registrationDeadline: "March 10, 2026",
-    prizes: ["1st Place: ₹5,000", "2nd Place: ₹3,000", "3rd Place: ₹2,000"],
-    requirements: ["Laptop with IDE", "Basic programming knowledge", "GitHub account"],
-    highlights: ["Multiple difficulty levels", "Real-world bug scenarios", "Industry mentors", "Certificates for all"]
-  }
-};
+import { useUser } from '@clerk/nextjs';
 
 const EventDetailPage = () => {
   const params = useParams();
   const eventId = parseInt(params.id);
-  const event = events[eventId];
+  const [event, setEvent] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [isRegistered, setIsRegistered] = useState(false);
+  const { isLoaded, isSignedIn, user } = useUser();
+
+  useEffect(() => {
+    const fetchEvent = async () => {
+      try {
+        const response = await fetch(`/api/events?id=${eventId}`);
+        const data = await response.json();
+        setEvent(data.event || null);
+      } catch (error) {
+        console.error('Error fetching event:', error);
+      }
+      setLoading(false);
+    };
+    fetchEvent();
+  }, [eventId]);
+
+  // Check if already registered
+  useEffect(() => {
+    const checkRegistration = async () => {
+      if (!isLoaded || !isSignedIn || !user) return;
+      
+      try {
+        const email = user.primaryEmailAddress?.emailAddress;
+        if (!email) return;
+
+        const response = await fetch(`/api/registrations?email=${encodeURIComponent(email)}&eventId=${eventId}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.isRegistered) {
+            setIsRegistered(true);
+          }
+        }
+      } catch (error) {
+        console.error('Error checking registration:', error);
+      }
+    };
+    
+    checkRegistration();
+  }, [eventId, isLoaded, isSignedIn, user]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 pt-24 pb-16 flex items-center justify-center">
+        <div className="text-white text-xl">Loading event...</div>
+      </div>
+    );
+  }
 
   if (!event) {
     return (
@@ -59,17 +88,37 @@ const EventDetailPage = () => {
         {/* Event Header */}
         <div className="bg-slate-800/50 backdrop-blur-sm rounded-3xl border border-purple-500/20 overflow-hidden mb-8">
           {/* Hero Section */}
-          <div className="bg-gradient-to-r from-purple-600/30 to-pink-600/30 p-8 sm:p-12 text-center">
-            <div className="w-24 h-24 bg-gradient-to-br from-purple-500/30 to-pink-500/30 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <span className="text-6xl">{event.image}</span>
+          <div 
+            className="relative p-8 sm:p-12 text-center overflow-hidden min-h-[400px] flex flex-col justify-center items-center"
+            style={{
+              backgroundImage: event.imagePath ? `url(${event.imagePath})` : 'none',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+          >
+            {/* Overlay/Gradient Background */}
+            <div className={`absolute inset-0 ${
+              event.imagePath 
+                ? 'bg-gradient-to-t from-slate-900 via-slate-900/80 to-slate-900/40' 
+                : 'bg-gradient-to-r from-purple-600/30 to-pink-600/30'
+            }`}></div>
+
+            {/* Content Container */}
+            <div className="relative z-10 w-full">
+              {!event.imagePath && (
+                <div className="w-24 h-24 bg-gradient-to-br from-purple-500/30 to-pink-500/30 rounded-2xl flex items-center justify-center mx-auto mb-6 overflow-hidden">
+                    <span className="text-6xl">{event.image}</span>
+                </div>
+              )}
+              
+              <span className="inline-block px-4 py-1 text-sm font-medium text-purple-200 bg-purple-900/50 backdrop-blur-sm border border-purple-500/30 rounded-full mb-4">
+                {event.category}
+              </span>
+              <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold text-white mb-4 drop-shadow-lg">
+                {event.name}
+              </h1>
+              <p className="text-xl sm:text-2xl text-gray-200 italic max-w-3xl mx-auto drop-shadow-md">{event.tagline}</p>
             </div>
-            <span className="inline-block px-4 py-1 text-sm font-medium text-purple-300 bg-purple-500/20 rounded-full mb-4">
-              {event.category}
-            </span>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-3">
-              {event.name}
-            </h1>
-            <p className="text-xl text-purple-200 italic">{event.tagline}</p>
           </div>
 
           {/* Quick Info Cards */}
@@ -120,7 +169,7 @@ const EventDetailPage = () => {
                 <span className="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center mr-3">📋</span>
                 About the Event
               </h2>
-              <p className="text-gray-300 leading-relaxed">{event.description}</p>
+              <p className="text-gray-300 leading-relaxed whitespace-pre-wrap">{event.description}</p>
             </div>
 
             {/* Details Grid */}
@@ -148,7 +197,7 @@ const EventDetailPage = () => {
               <div className="bg-slate-700/30 rounded-xl p-5">
                 <h3 className="text-lg font-semibold text-white mb-4">📝 Requirements</h3>
                 <ul className="space-y-2">
-                  {event.requirements.map((req, index) => (
+                  {event.requirements && event.requirements.map((req, index) => (
                     <li key={index} className="flex items-start text-gray-300">
                       <span className="text-purple-400 mr-2">✓</span>
                       {req}
@@ -159,7 +208,7 @@ const EventDetailPage = () => {
             </div>
 
             {/* Prizes */}
-            {event.prizes.length > 0 && (
+            {event.prizes && event.prizes.length > 0 && (
               <div className="mb-8">
                 <h2 className="text-xl font-bold text-white mb-4 flex items-center">
                   <span className="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center mr-3">🏆</span>
@@ -176,30 +225,70 @@ const EventDetailPage = () => {
             )}
 
             {/* Highlights */}
-            <div className="mb-8">
-              <h2 className="text-xl font-bold text-white mb-4 flex items-center">
-                <span className="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center mr-3">✨</span>
-                Highlights
-              </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {event.highlights.map((highlight, index) => (
-                  <div key={index} className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-3 text-center">
-                    <span className="text-purple-200 text-sm">{highlight}</span>
-                  </div>
-                ))}
+            {event.highlights && event.highlights.length > 0 && (
+              <div className="mb-8">
+                <h2 className="text-xl font-bold text-white mb-4 flex items-center">
+                  <span className="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center mr-3">✨</span>
+                  Highlights
+                </h2>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {event.highlights.map((highlight, index) => (
+                    <div key={index} className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-3 text-center">
+                      <span className="text-purple-200 text-sm">{highlight}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Register Button */}
             <div className="text-center pt-4">
-              <Link
-                href={`/events/${eventId}/register`}
-                className="inline-block bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-10 py-4 rounded-full font-semibold text-lg transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-purple-500/30"
-              >
-                Register for {event.name}
-              </Link>
+              {(() => {
+                const isExpired = event.deadline && new Date(event.deadline) < new Date();
+                const isClosed = !event.registrationOpen || isExpired;
+
+                if (isRegistered) {
+                  return (
+                    <button
+                      disabled
+                      className="inline-flex bg-green-600/20 border border-green-500/50 text-green-400 px-10 py-4 rounded-full font-semibold text-lg cursor-not-allowed items-center justify-center gap-2 mx-auto"
+                    >
+                      <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Already Registered
+                    </button>
+                  );
+                }
+
+                if (isClosed) {
+                  return (
+                    <button
+                      disabled
+                      className="inline-block bg-slate-700/50 border border-slate-600 text-gray-400 px-10 py-4 rounded-full font-semibold text-lg cursor-not-allowed"
+                    >
+                      {isExpired ? 'Registration Ended' : 'Registration Closed'}
+                    </button>
+                  );
+                }
+
+                return (
+                  <Link
+                    href={`/events/${eventId}/register`}
+                    className="inline-block bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-10 py-4 rounded-full font-semibold text-lg transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-purple-500/30"
+                  >
+                    Register for {event.name}
+                  </Link>
+                );
+              })()}
+              
               <p className="text-gray-500 text-sm mt-4">
                 Registration closes on {event.registrationDeadline}
+                {event.deadline && (
+                   <span className="block text-xs mt-1 text-gray-600">
+                     (Automated closing at: {new Date(event.deadline).toLocaleString()})
+                   </span>
+                )}
               </p>
             </div>
           </div>

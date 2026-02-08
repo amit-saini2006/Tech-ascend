@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
+import { checkAdminAuth, checkAuth } from '@/lib/auth';
+
+// Force dynamic rendering for authenticated routes
+export const dynamic = 'force-dynamic';
 
 // Path to store registrations (using a JSON file for simplicity)
 const dataFilePath = path.join(process.cwd(), 'data', 'registrations.json');
@@ -29,39 +33,75 @@ function saveRegistrations(registrations) {
   fs.writeFileSync(dataFilePath, JSON.stringify(registrations, null, 2));
 }
 
-// GET - Fetch all registrations
+// GET - Fetch all registrations (PROTECTED - Admin only for full list)
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const email = searchParams.get('email');
     const eventId = searchParams.get('eventId');
     
-    const registrations = getRegistrations();
-    
-    // If email and eventId provided, check if user is registered for specific event
+    // If checking specific user registration - allow without admin auth
+    // (users can check if they're already registered)
     if (email && eventId) {
+      const registrations = getRegistrations();
       const isRegistered = registrations.some(
         reg => reg.email === email && reg.eventId === parseInt(eventId)
       );
       return NextResponse.json({ isRegistered });
     }
     
-    // Return all registrations
+    // Check if user is authenticated
+    const authCheck = await checkAuth();
+    
+    // If requesting own registrations (email provided matches logged in user)
+    if (email && !eventId) {
+      if (!authCheck.isAuthenticated) {
+        return authCheck.error;
+      }
+      
+      const userEmail = authCheck.user.primaryEmailAddress.emailAddress.toLowerCase();
+      if (email.toLowerCase() !== userEmail) {
+        return NextResponse.json({ error: 'Forbidden - Can only view own registrations' }, { status: 403 });
+      }
+      
+      const registrations = getRegistrations();
+      const userRegistrations = registrations.filter(r => r.email === email.toLowerCase());
+      return NextResponse.json({ registrations: userRegistrations });
+    }
+
+    // For full registration list (admin) or other queries
+    const { isAdmin, error } = await checkAdminAuth();
+    if (!isAdmin) {
+      return error;
+    }
+    
+    const registrations = getRegistrations();
     return NextResponse.json({ registrations });
   } catch (error) {
+    console.error('GET registrations error:', error);
     return NextResponse.json({ error: 'Failed to fetch registrations' }, { status: 500 });
   }
 }
 
-// POST - Create new registration
+// POST - Create new registration (PUBLIC - anyone can register)
 export async function POST(request) {
   try {
     const body = await request.json();
     const { name, email, course, year, college, phone, eventId, eventName } = body;
     
+    // Input validation
     if (!name || !email || !eventId) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
+    
+    // Basic email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json({ error: 'Invalid email format' }, { status: 400 });
+    }
+    
+    // Sanitize inputs
+    const sanitize = (str) => str ? String(str).trim().slice(0, 200) : '';
     
     const registrations = getRegistrations();
     
@@ -77,17 +117,17 @@ export async function POST(request) {
       }, { status: 409 });
     }
     
-    // Create new registration
+    // Create new registration with sanitized data
     const newRegistration = {
       id: Date.now(),
-      name: name,
-      email: email,
-      course: course || 'Not specified',
-      year: year || 'Not specified',
-      college: college || 'Not specified',
-      phone: phone || 'Not provided',
-      eventId,
-      eventName: eventName || 'Unknown Event',
+      name: sanitize(name),
+      email: sanitize(email).toLowerCase(),
+      course: sanitize(course) || 'Not specified',
+      year: sanitize(year) || 'Not specified',
+      college: sanitize(college) || 'Not specified',
+      phone: sanitize(phone) || 'Not provided',
+      eventId: parseInt(eventId),
+      eventName: sanitize(eventName) || 'Unknown Event',
       registeredAt: new Date().toISOString()
     };
     
@@ -99,13 +139,20 @@ export async function POST(request) {
       registration: newRegistration 
     }, { status: 201 });
   } catch (error) {
+    console.error('POST registration error:', error);
     return NextResponse.json({ error: 'Failed to create registration' }, { status: 500 });
   }
 }
 
-// DELETE - Remove a registration
+// DELETE - Remove a registration (PROTECTED - Admin only)
 export async function DELETE(request) {
   try {
+    // Require admin authentication
+    const { isAdmin, error } = await checkAdminAuth();
+    if (!isAdmin) {
+      return error;
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     
@@ -125,6 +172,7 @@ export async function DELETE(request) {
     
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error('DELETE registration error:', error);
     return NextResponse.json({ error: 'Failed to delete registration' }, { status: 500 });
   }
 }

@@ -5,8 +5,26 @@ import {
   SignedIn,
   SignedOut,
 } from '@clerk/nextjs';
+import { useState, useEffect } from 'react';
 
 export default function Home() {
+  const [registrationOpen, setRegistrationOpen] = useState(true);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await fetch('/api/settings');
+        if (response.ok) {
+          const data = await response.json();
+          setRegistrationOpen(data.settings.registrationOpen);
+        }
+      } catch (error) {
+        console.error('Error fetching settings:', error);
+      }
+    };
+    fetchSettings();
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       {/* Hero Section */}
@@ -21,9 +39,17 @@ export default function Home() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 sm:py-32 lg:py-40">
           <div className="text-center">
             {/* Badge */}
-            <div className="inline-flex items-center px-4 py-2 rounded-full bg-purple-800/50 border border-purple-600/50 mb-8">
-              <span className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></span>
-              <span className="text-purple-200 text-sm font-medium">Registration Open for 2026</span>
+            <div className={`inline-flex items-center px-4 py-2 rounded-full border mb-8 ${
+              registrationOpen 
+                ? 'bg-purple-800/50 border-purple-600/50' 
+                : 'bg-red-900/50 border-red-700/50'
+            }`}>
+              <span className={`w-2 h-2 rounded-full mr-2 ${
+                registrationOpen ? 'bg-green-400 animate-pulse' : 'bg-red-500'
+              }`}></span>
+              <span className="text-purple-200 text-sm font-medium">
+                {registrationOpen ? 'Registration Open' : 'Registration Closed'}
+              </span>
             </div>
 
             {/* Main Heading */}
@@ -36,9 +62,7 @@ export default function Home() {
 
             {/* Subtitle */}
             <p className="text-lg sm:text-xl text-gray-300 max-w-3xl mx-auto mb-10 leading-relaxed">
-              The premier computer science society for students passionate about technology, 
-              innovation, and building the future. Join a community of like-minded individuals 
-              who are ready to ascend to new heights.
+              A Computer Science society where students code, debug, and grow through hands-on innovation.
             </p>
 
             {/* CTA Buttons */}
@@ -50,14 +74,7 @@ export default function Home() {
                   </button>
                 </SignInButton>
               </SignedOut>
-              <SignedIn>
-                <Link 
-                  href="/"
-                  className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-4 rounded-full font-semibold text-lg transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-purple-500/30 text-center"
-                >
-                  Join Tech Ascend
-                </Link>
-              </SignedIn>
+
               <Link 
                 href="/events"
                 className="w-full sm:w-auto border-2 border-purple-500 text-purple-300 hover:bg-purple-500/20 px-8 py-4 rounded-full font-semibold text-lg transition-all duration-300 text-center"
@@ -89,9 +106,9 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-white mb-3">Workshops & Training</h3>
+              <h3 className="text-xl font-semibold text-white mb-3">Workshops & Skill Development</h3>
               <p className="text-gray-400 leading-relaxed">
-                Hands-on sessions covering cutting-edge technologies, from AI/ML to cloud computing and beyond.
+                Participate in practical sessions and activities designed to strengthen core computer science concepts and technical skills.
               </p>
             </div>
 
@@ -102,9 +119,9 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-white mb-3">Networking Events</h3>
+              <h3 className="text-xl font-semibold text-white mb-3">Collaborative Learning & Community</h3>
               <p className="text-gray-400 leading-relaxed">
-                Connect with industry professionals, alumni, and peers who share your passion for technology.
+                Learn and grow with peers who share a common interest in technology, problem-solving, and innovation.
               </p>
             </div>
 
@@ -115,9 +132,9 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-white mb-3">Hackathons & Projects</h3>
+              <h3 className="text-xl font-semibold text-white mb-3">Competitions & Technical Events</h3>
               <p className="text-gray-400 leading-relaxed">
-                Participate in exciting hackathons and collaborate on real-world projects that make an impact.
+                Take part in coding challenges, debugging competitions, and creative tech events that encourage logical thinking and innovation.
               </p>
             </div>
           </div>
@@ -132,8 +149,7 @@ export default function Home() {
               Ready to Ascend?
             </h2>
             <p className="text-gray-300 mb-8 max-w-2xl mx-auto">
-              Join hundreds of students who are already part of the Tech Ascend community. 
-              Your journey to tech excellence starts here.
+              Join Tech Ascend and start your journey in technology and innovation today!
             </p>
             <Link 
               href="/events"
@@ -156,7 +172,7 @@ export default function Home() {
               <span className="text-white font-semibold">Tech Ascend</span>
             </div>
             <p className="text-gray-500 text-sm">
-              © 2026 Tech Ascend. All rights reserved.
+              © 2026 Tech Ascend. All rights reserved. Made with ❤️ and chai.
             </p>
             <div className="flex items-center space-x-6">
               <a href="#" className="text-gray-400 hover:text-white transition-colors">

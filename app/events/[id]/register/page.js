@@ -3,22 +3,12 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 
-const events = {
-  1: {
-    id: 1,
-    name: "BugHunt",
-    tagline: "Hunt the bugs, claim the glory!",
-    image: "🐛",
-    date: "March 15, 2026",
-    category: "Competition"
-  }
-};
-
 const RegisterPage = () => {
   const params = useParams();
   const router = useRouter();
   const eventId = parseInt(params.id);
-  const event = events[eventId];
+  const [event, setEvent] = useState(null);
+  const [eventLoading, setEventLoading] = useState(true);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -33,6 +23,21 @@ const RegisterPage = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [alreadyRegistered, setAlreadyRegistered] = useState(false);
+
+  // Fetch event data
+  useEffect(() => {
+    const fetchEvent = async () => {
+      try {
+        const response = await fetch(`/api/events?id=${eventId}`);
+        const data = await response.json();
+        setEvent(data.event || null);
+      } catch (error) {
+        console.error('Error fetching event:', error);
+      }
+      setEventLoading(false);
+    };
+    fetchEvent();
+  }, [eventId]);
 
   // Check if already registered
   useEffect(() => {
@@ -133,6 +138,14 @@ const RegisterPage = () => {
     setIsSubmitting(false);
   };
 
+  if (eventLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 pt-24 pb-16 flex items-center justify-center">
+        <div className="text-white text-xl">Loading...</div>
+      </div>
+    );
+  }
+
   if (!event) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 pt-24 pb-16 flex items-center justify-center">
@@ -191,8 +204,12 @@ const RegisterPage = () => {
         <div className="bg-slate-800/50 backdrop-blur-sm rounded-3xl border border-purple-500/20 overflow-hidden">
           {/* Header */}
           <div className="bg-gradient-to-r from-purple-600/30 to-pink-600/30 p-6 text-center">
-            <div className="w-16 h-16 bg-gradient-to-br from-purple-500/30 to-pink-500/30 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <span className="text-4xl">{event.image}</span>
+            <div className="w-16 h-16 bg-gradient-to-br from-purple-500/30 to-pink-500/30 rounded-xl flex items-center justify-center mx-auto mb-4 overflow-hidden">
+              {event.imagePath ? (
+                <img src={event.imagePath} alt={event.name} className="w-full h-full object-cover rounded-xl" />
+              ) : (
+                <span className="text-4xl">{event.image}</span>
+              )}
             </div>
             <h1 className="text-2xl font-bold text-white mb-1">Register for {event.name}</h1>
             <p className="text-purple-200">{event.date}</p>
