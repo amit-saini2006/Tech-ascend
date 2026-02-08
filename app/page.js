@@ -16,7 +16,7 @@ export default function Home() {
         const response = await fetch('/api/settings');
         if (response.ok) {
           const data = await response.json();
-          setRegistrationOpen(data.settings.registrationOpen);
+          setRegistrationOpen(data.registrationOpen);
         }
       } catch (error) {
         console.error('Error fetching settings:', error);

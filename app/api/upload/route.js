@@ -59,12 +59,17 @@ export async function POST(request) {
       }, { status: 400 });
     }
     
-    // Generate unique filename with only safe characters
+    // Generate unique filename
     const timestamp = Date.now();
-    const originalName = file.name
-      .replace(/[^a-zA-Z0-9.]/g, '_')
-      .slice(0, 50); // Limit filename length
-    const filename = `${timestamp}_${originalName}`;
+    const randomString = Math.random().toString(36).substring(2, 10);
+    // Get extension safely
+    const originalName = file.name || 'image.png';
+    const ext = path.extname(originalName).toLowerCase() || '.png';
+    
+    // Ensure we only use allowed extensions in the filename
+    const safeExt = ['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(ext) ? ext : '.png';
+    
+    const filename = `${timestamp}_${randomString}${safeExt}`;
     
     // Save file
     const uploadDir = ensureUploadDir();

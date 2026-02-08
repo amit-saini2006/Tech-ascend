@@ -39,27 +39,9 @@ const RegisterPage = () => {
     fetchEvent();
   }, [eventId]);
 
-  // Check if already registered
-  useEffect(() => {
-    const checkRegistration = async () => {
-      if (formData.email) {
-        try {
-          const response = await fetch(`/api/registrations?email=${formData.email}&eventId=${eventId}`);
-          const data = await response.json();
-          if (data.isRegistered) {
-            setAlreadyRegistered(true);
-          }
-        } catch (error) {
-          console.error('Error checking registration:', error);
-        }
-      }
-    };
-    
-    if (formData.email.includes('@')) {
-      const timer = setTimeout(checkRegistration, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [formData.email, eventId]);
+  // Registration check is now handled during submission for security
+  // or could be enabled only for authenticated users if needed.
+  // For now, we rely on the backend validation.
 
   const handleChange = (e) => {
     const { name, value } = e.target;
