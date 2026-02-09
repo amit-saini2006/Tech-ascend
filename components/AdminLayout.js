@@ -77,14 +77,14 @@ export default function AdminLayout({ children }) {
       } lg:translate-x-0`}>
         {/* Logo */}
         <div className="flex items-center justify-between h-16 px-4 border-b border-purple-500/20">
-          <div className="flex items-center gap-2">
+          <Link href="/admin" className="flex items-center gap-2">
             <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
             <span className="text-white font-semibold">Admin Panel</span>
-          </div>
+          </Link>
           <button 
             onClick={() => setSidebarOpen(false)}
             className="lg:hidden text-gray-400 hover:text-white"
@@ -153,7 +153,7 @@ export default function AdminLayout({ children }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <span className="text-white font-semibold">Admin Panel</span>
+          <Link href="/admin" className="text-white font-semibold">Admin Panel</Link>
           <div className="w-6" /> {/* Spacer */}
         </header>
 
