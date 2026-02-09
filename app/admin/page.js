@@ -1,3 +1,8 @@
+/**
+ * @page Admin Dashboard
+ * @route /admin
+ * @description Main admin panel with registration management, event management, and admin controls
+ */
 "use client";
 import React, { useState, useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';

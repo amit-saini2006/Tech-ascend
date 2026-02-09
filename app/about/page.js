@@ -1,3 +1,8 @@
+/**
+ * @page About Page
+ * @route /about
+ * @description About Tech Ascend (Coming Soon placeholder)
+ */
 import Link from 'next/link';
 
 export const metadata = {
