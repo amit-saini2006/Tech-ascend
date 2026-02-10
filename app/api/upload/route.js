@@ -3,22 +3,27 @@
  * @route /api/upload
  * @description Image upload for events (admin only)
  * @methods POST (upload image)
+ * 
+ * Images are stored as base64 data URIs in MongoDB (via the Event model's imagePath field).
+ * This ensures images persist on serverless deployments (e.g., Vercel) where the filesystem is ephemeral.
  */
 import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
-import { checkAdminAuth, validateImageFile, ALLOWED_IMAGE_TYPES, MAX_FILE_SIZE } from '@/lib/auth';
+import { checkAdminAuth, validateImageFile } from '@/lib/auth';
 
 // Force dynamic rendering for authenticated routes
 export const dynamic = 'force-dynamic';
 
-// Ensure upload directory exists
-function ensureUploadDir() {
-  const uploadDir = path.join(process.cwd(), 'public', 'events');
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  }
-  return uploadDir;
+// Map file extensions to MIME types
+function getMimeType(filename) {
+  const ext = (filename || '').split('.').pop()?.toLowerCase();
+  const mimeTypes = {
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'png': 'image/png',
+    'gif': 'image/gif',
+    'webp': 'image/webp',
+  };
+  return mimeTypes[ext] || 'image/png';
 }
 
 // POST - Handle image upload (PROTECTED - Admin only)
@@ -65,30 +70,14 @@ export async function POST(request) {
       }, { status: 400 });
     }
     
-    // Generate unique filename
-    const timestamp = Date.now();
-    const randomString = Math.random().toString(36).substring(2, 10);
-    // Get extension safely
-    const originalName = file.name || 'image.png';
-    const ext = path.extname(originalName).toLowerCase() || '.png';
-    
-    // Ensure we only use allowed extensions in the filename
-    const safeExt = ['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(ext) ? ext : '.png';
-    
-    const filename = `${timestamp}_${randomString}${safeExt}`;
-    
-    // Save file
-    const uploadDir = ensureUploadDir();
-    const filePath = path.join(uploadDir, filename);
-    fs.writeFileSync(filePath, buffer);
-    
-    // Return the public path
-    const publicPath = `/events/${filename}`;
+    // Convert to base64 data URI — this gets stored in MongoDB via the Event's imagePath field
+    const mimeType = file.type || getMimeType(file.name);
+    const base64String = buffer.toString('base64');
+    const dataUri = `data:${mimeType};base64,${base64String}`;
     
     return NextResponse.json({ 
       success: true, 
-      imagePath: publicPath,
-      filename: filename
+      imagePath: dataUri,
     });
   } catch (error) {
     console.error('Upload error:', error);
