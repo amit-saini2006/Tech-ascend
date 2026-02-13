@@ -7,6 +7,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
+import { useUser } from '@clerk/nextjs';
 
 const RegisterPage = () => {
   const params = useParams();
@@ -14,6 +15,7 @@ const RegisterPage = () => {
   const eventId = parseInt(params.id);
   const [event, setEvent] = useState(null);
   const [eventLoading, setEventLoading] = useState(true);
+  const { isLoaded, isSignedIn, user } = useUser();
 
   const [formData, setFormData] = useState({
     name: '',
@@ -29,6 +31,19 @@ const RegisterPage = () => {
   const [success, setSuccess] = useState(false);
   const [alreadyRegistered, setAlreadyRegistered] = useState(false);
 
+  // authentication check
+  useEffect(() => {
+    if (isLoaded && !isSignedIn) {
+      router.push('/sign-in?redirect_url=' + window.location.href);
+    } else if (isLoaded && isSignedIn && user) {
+        setFormData(prev => ({
+            ...prev,
+            email: user.primaryEmailAddress?.emailAddress || '',
+            name: user.fullName || user.firstName || ''
+        }));
+    }
+  }, [isLoaded, isSignedIn, user, router]);
+
   // Fetch event data
   useEffect(() => {
     const fetchEvent = async () => {
@@ -43,10 +58,6 @@ const RegisterPage = () => {
     };
     fetchEvent();
   }, [eventId]);
-
-  // Registration check is now handled during submission for security
-  // or could be enabled only for authenticated users if needed.
-  // For now, we rely on the backend validation.
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -75,6 +86,7 @@ const RegisterPage = () => {
       setError('Please select your year');
       return;
     }
+    // Email is now auto-filled and read-only, but good to keep validation
     if (!formData.email.trim() || !formData.email.includes('@')) {
       setError('Please enter a valid email');
       return;
@@ -129,7 +141,7 @@ const RegisterPage = () => {
     setIsSubmitting(false);
   };
 
-  if (eventLoading) {
+  if (eventLoading || !isLoaded) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] pt-24 pb-16 flex items-center justify-center">
         <div className="text-white text-xl flex items-center gap-3">
@@ -138,6 +150,11 @@ const RegisterPage = () => {
         </div>
       </div>
     );
+  }
+
+  // If not signed in, we are redirecting, so return null or basic loader
+  if (!isSignedIn) {
+      return null;
   }
 
   if (!event) {
@@ -220,7 +237,8 @@ const RegisterPage = () => {
                 type="text"
                 name="name"
                 value={formData.name}
-                onChange={handleChange}
+                // allow editing name if needed, but it's prefilled
+                onChange={handleChange} 
                 placeholder="Enter your full name"
                 className="w-full bg-[#222]/50 border border-[#333] rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-orange-500 transition-colors"
               />
@@ -269,9 +287,9 @@ const RegisterPage = () => {
                 type="email"
                 name="email"
                 value={formData.email}
-                onChange={handleChange}
-                placeholder="Enter your email"
-                className="w-full bg-[#222]/50 border border-[#333] rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-orange-500 transition-colors"
+                readOnly
+                disabled
+                className="w-full bg-[#222]/30 border border-[#333] rounded-xl px-4 py-3 text-gray-400 cursor-not-allowed placeholder-gray-600 focus:outline-none"
               />
               {alreadyRegistered && (
                 <p className="text-yellow-400 text-sm mt-2">⚠️ This email is already registered for this event</p>

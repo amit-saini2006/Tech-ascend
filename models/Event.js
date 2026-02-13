@@ -67,6 +67,9 @@ const EventSchema = new mongoose.Schema({
     type: Number, // Max file size in MB (default 10MB)
     default: 10,
   },
+  communityLink: {
+    type: String, // Link to join community (e.g., WhatsApp, Discord)
+  },
 }, {
   timestamps: true,
 });

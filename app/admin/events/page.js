@@ -14,7 +14,7 @@ const AdminEventsPage = () => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(null);
-  
+
   // Event editing state
   const [editModal, setEditModal] = useState({ show: false, event: null });
   const [editForm, setEditForm] = useState({});
@@ -62,13 +62,13 @@ const AdminEventsPage = () => {
   // Handle delete event
   const handleDeleteEvent = async () => {
     if (!deleteEventModal.event) return;
-    
+
     setDeletingEvent(true);
     try {
       const response = await fetch(`/api/events?id=${deleteEventModal.event.id}`, {
         method: 'DELETE',
       });
-      
+
       if (response.ok) {
         setEvents(prev => prev.filter(e => e.id !== deleteEventModal.event.id));
         setDeleteEventModal({ show: false, event: null });
@@ -106,6 +106,7 @@ const AdminEventsPage = () => {
         prizes: event.prizes || [],
         requirements: event.requirements || [],
         highlights: event.highlights || [],
+        communityLink: event.communityLink || '',
         // Submission fields
         problemStatement: event.problemStatement || '',
         submissionType: event.submissionType || 'none',
@@ -136,6 +137,7 @@ const AdminEventsPage = () => {
         prizes: [],
         requirements: [],
         highlights: [],
+        communityLink: '',
         // Submission fields
         problemStatement: '',
         submissionType: 'none',
@@ -188,14 +190,14 @@ const AdminEventsPage = () => {
         img.onload = () => {
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
-          
+
           // Max dimensions
           const MAX_WIDTH = 1920;
           const MAX_HEIGHT = 1920;
-          
+
           let width = img.width;
           let height = img.height;
-          
+
           if (width > height) {
             if (width > MAX_WIDTH) {
               height *= MAX_WIDTH / width;
@@ -207,11 +209,11 @@ const AdminEventsPage = () => {
               height = MAX_HEIGHT;
             }
           }
-          
+
           canvas.width = width;
           canvas.height = height;
           ctx.drawImage(img, 0, 0, width, height);
-          
+
           // Compress to JPEG with 0.85 quality (high quality)
           const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
           resolve(dataUrl);
@@ -245,13 +247,13 @@ const AdminEventsPage = () => {
     try {
       // Compress image before upload
       const compressedDataUrl = await compressImage(file);
-      
+
       // Convert base64 back to blob for upload if needed, 
       // but our API expects a file in formData.
       // Let's convert the dataURL to a Blob
       const res = await fetch(compressedDataUrl);
       const blob = await res.blob();
-      
+
       // Validating file size (1MB limit)
       if (blob.size > 1024 * 1024) {
         alert('Image is too large. Please use a smaller image (under 1MB after compression).');
@@ -297,6 +299,7 @@ const AdminEventsPage = () => {
         prizes: editForm.prizes?.filter(p => p.trim()) || [],
         requirements: editForm.requirements?.filter(r => r.trim()) || [],
         highlights: editForm.highlights?.filter(h => h.trim()) || [],
+        communityLink: editForm.communityLink || '',
         // Ensure submission fields are included
         problemStatement: editForm.problemStatement || '',
         submissionType: editForm.submissionType || 'none',
@@ -304,7 +307,7 @@ const AdminEventsPage = () => {
         submissionDeadline: editForm.submissionDeadline || '',
         maxFileSize: editForm.maxFileSize || 10,
       };
-      
+
       console.log('Saving event with data:', cleanedForm);
 
       const method = editForm.id ? 'PUT' : 'POST';
@@ -393,7 +396,7 @@ const AdminEventsPage = () => {
         ) : (
           <div className="grid gap-2 sm:gap-4">
             {events.map((event) => (
-              <div 
+              <div
                 key={event.id}
                 className="flex items-center justify-between p-2 sm:p-4 bg-[#222]/50 rounded-xl border border-[#333] hover:border-orange-500/30 transition-colors gap-2"
               >
@@ -412,7 +415,7 @@ const AdminEventsPage = () => {
                       {(() => {
                         const isExpired = event.deadline && new Date(event.deadline) < new Date();
                         const isClosed = !event.registrationOpen;
-                        
+
                         if (isExpired) {
                           return <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-500/20 text-gray-400 border border-gray-500/30 flex-shrink-0">Ended</span>;
                         }
@@ -701,13 +704,11 @@ const AdminEventsPage = () => {
                 </div>
                 <button
                   onClick={() => handleFormChange('registrationOpen', !editForm.registrationOpen)}
-                  className={`w-12 h-6 rounded-full transition-colors ${
-                    editForm.registrationOpen ? 'bg-green-500' : 'bg-[#444]'
-                  }`}
+                  className={`w-12 h-6 rounded-full transition-colors ${editForm.registrationOpen ? 'bg-green-500' : 'bg-[#444]'
+                    }`}
                 >
-                  <div className={`w-5 h-5 bg-white rounded-full transition-transform ${
-                    editForm.registrationOpen ? 'translate-x-6' : 'translate-x-0.5'
-                  }`}></div>
+                  <div className={`w-5 h-5 bg-white rounded-full transition-transform ${editForm.registrationOpen ? 'translate-x-6' : 'translate-x-0.5'
+                    }`}></div>
                 </button>
               </div>
 
@@ -765,6 +766,23 @@ const AdminEventsPage = () => {
                 >
                   + Add Requirement
                 </button>
+              </div>
+
+              {/* Community Link */}
+              <div className="mb-4">
+                <label className="block text-gray-400 text-sm mb-2">Community Link (WhatsApp/Discord)</label>
+                <div className="flex items-center gap-2">
+                  <div className="bg-[#222]/50 border border-[#333] border-r-0 rounded-l-xl px-3 py-2 text-gray-400">
+                    🔗
+                  </div>
+                  <input
+                    type="url"
+                    value={editForm.communityLink || ''}
+                    onChange={(e) => handleFormChange('communityLink', e.target.value)}
+                    className="flex-1 bg-[#222]/50 border border-[#333] rounded-r-xl px-4 py-2 text-white focus:outline-none focus:border-orange-500"
+                    placeholder="https://chat.whatsapp.com/..."
+                  />
+                </div>
               </div>
 
               {/* Submission Settings Section */}

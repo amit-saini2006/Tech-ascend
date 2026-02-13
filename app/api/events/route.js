@@ -18,7 +18,7 @@ export async function GET(request) {
     await dbConnect();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
-    
+
     if (id) {
       const event = await Event.findOne({ id: parseInt(id) }).lean();
       if (!event) {
@@ -26,7 +26,7 @@ export async function GET(request) {
       }
       return NextResponse.json({ event });
     }
-    
+
     // Sort by ID descending (newest first)
     const events = await Event.find({}).sort({ id: -1 }).lean();
     return NextResponse.json({ events });
@@ -47,7 +47,7 @@ export async function PUT(request) {
     await dbConnect();
     const body = await request.json();
     const { id, ...eventData } = body;
-    
+
     if (!id) {
       return NextResponse.json({ error: 'Event ID required' }, { status: 400 });
     }
@@ -56,19 +56,23 @@ export async function PUT(request) {
     // Mongoose handles most validation, but we can trim strings here if needed
     if (eventData.description) eventData.description = String(eventData.description).trim();
 
+    console.log('Updating event:', id, 'with data:', eventData);
+
     const updatedEvent = await Event.findOneAndUpdate(
       { id: parseInt(id) },
       { $set: eventData },
       { new: true, runValidators: true } // Return updated doc, run schema validators
     ).lean();
-    
+
+    console.log('Event updated:', updatedEvent);
+
     if (!updatedEvent) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
-    
-    return NextResponse.json({ 
-      success: true, 
-      event: updatedEvent 
+
+    return NextResponse.json({
+      success: true,
+      event: updatedEvent
     });
   } catch (error) {
     console.error('PUT event error:', error);
@@ -86,12 +90,12 @@ export async function POST(request) {
 
     await dbConnect();
     const body = await request.json();
-    
+
     // Generate new ID (find max ID and increment)
     // Note: In high currency this isn't atomic, but for an admin panel it's fine.
     const lastEvent = await Event.findOne().sort({ id: -1 });
     const nextId = lastEvent ? lastEvent.id + 1 : 1;
-    
+
     // Default values are handled by Mongoose Schema defaults where possible
     // But we map body fields to match our Schema structure
     const newEventData = {
@@ -121,17 +125,22 @@ export async function POST(request) {
       driveLink: body.driveLink || '',
       submissionDeadline: body.submissionDeadline || '',
       maxFileSize: body.maxFileSize || 10,
+      communityLink: body.communityLink || '',
     };
-    
+
+    console.log('Creating event with data:', newEventData);
+
     const newEvent = await Event.create(newEventData);
-    
-    return NextResponse.json({ 
-      success: true, 
-      event: newEvent 
+
+    console.log('Event created:', newEvent);
+
+    return NextResponse.json({
+      success: true,
+      event: newEvent
     }, { status: 201 });
   } catch (error) {
     console.error('POST event error:', error);
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: error.message || 'Failed to create event',
       details: error.errors // Return validation details if available
     }, { status: 500 });
@@ -149,17 +158,17 @@ export async function DELETE(request) {
     await dbConnect();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
-    
+
     if (!id) {
       return NextResponse.json({ error: 'Event ID required' }, { status: 400 });
     }
-    
+
     const deletedEvent = await Event.findOneAndDelete({ id: parseInt(id) });
-    
+
     if (!deletedEvent) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
-    
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('DELETE event error:', error);
